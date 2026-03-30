@@ -1,19 +1,22 @@
-name: Build Akrep APK
-on: [push, pull_request]
+name: Akrep Derle
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Build with Buildozer
         uses: ArtemBernatskyy/buildozer-action@v1
         with:
           workdir: .
           buildozer_version: stable
       - name: Upload APK
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         with:
-          name: Akrep-988-APK
+          name: Akrep-APK
           path: bin/*.apk
-          
+         
