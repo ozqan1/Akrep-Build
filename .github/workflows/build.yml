@@ -1,0 +1,19 @@
+name: Build Akrep APK
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Build with Buildozer
+        uses: ArtemBernatskyy/buildozer-action@v1
+        with:
+          workdir: .
+          buildozer_version: stable
+      - name: Upload APK
+        uses: actions/upload-artifact@v2
+        with:
+          name: Akrep-988-APK
+          path: bin/*.apk
+          
