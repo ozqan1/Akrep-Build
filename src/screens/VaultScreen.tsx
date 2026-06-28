@@ -6,54 +6,56 @@ import {
   TouchableOpacity,
   ScrollView,
   Alert,
+  ActivityIndicator,
+  Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { ThemedBackground } from '@/components/ThemedBackground';
 import { useTheme } from '@/theme/useTheme';
 import { PressableScale } from '@/components/PressableScale';
-import { useMediaStore, MediaAsset } from '@/store/useMediaStore';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
+import { useVaultStore, VaultAsset } from '@/store/useVaultStore';
+import { LockScreen } from '@/components/LockScreen';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const ITEM_SIZE = (SCREEN_WIDTH - 48 - 8 * 2) / 3;
 
 export default function VaultScreen() {
   const theme = useTheme();
   const c = theme.colors;
-  const [locked, setLocked] = useState(true);
-  const [vaultAssets, setVaultAssets] = useState<MediaAsset[]>([]);
+  const { vaultAssets, isLocked, loading, initVault, lockVault, removeFromVault } = useVaultStore();
+  const [selectedAsset, setSelectedAsset] = useState<VaultAsset | null>(null);
 
-  // In a real app, this would be stored in a secure database/storage
-  // For now, we simulate the vault functionality
+  useEffect(() => {
+    initVault();
+  }, []);
 
   const handleUnlock = () => {
-    // This would normally trigger biometric or PIN
-    setLocked(false);
+    // LockScreen tarafından yönetilecek
   };
 
-  if (locked) {
-    return (
-      <ThemedBackground>
-        <SafeAreaView style={styles.fill}>
-          <View style={styles.lockedContainer}>
-            <View style={[styles.lockIcon, { backgroundColor: c.surfaceAlt }]}>
-              <Ionicons name="lock-closed" size={60} color={c.accent} />
-            </View>
-            <Text style={[styles.title, { color: c.text }]}>Gizli Kasa</Text>
-            <Text style={[styles.desc, { color: c.textDim }]}>
-              Özel medyalarınız burada şifrelenmiş olarak saklanır.
-            </Text>
-            <PressableScale
-              onPress={handleUnlock}
-              style={[styles.unlockBtn, { backgroundColor: c.accent }]}
-            >
-              <Text style={[styles.unlockBtnText, { color: c.onAccent }]}>
-                Kasa Kilidini Aç
-              </Text>
-            </PressableScale>
-          </View>
-        </SafeAreaView>
-      </ThemedBackground>
+  const handleDeleteAsset = (asset: VaultAsset) => {
+    Alert.alert(
+      'Sil',
+      `"${asset.filename}" Vault'tan silinecek. Emin misiniz?`,
+      [
+        { text: 'İptal', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Sil',
+          onPress: async () => {
+            await removeFromVault(asset.id);
+            Alert.alert('Başarılı', 'Dosya silindi.');
+          },
+          style: 'destructive',
+        },
+      ]
     );
+  };
+
+  if (isLocked) {
+    return <LockScreen onUnlock={handleUnlock} />;
   }
 
   return (
@@ -64,22 +66,40 @@ export default function VaultScreen() {
             <Ionicons name="chevron-back" size={24} color={c.text} />
           </TouchableOpacity>
           <Text style={[styles.headerTitle, { color: c.text }]}>Gizli Kasa</Text>
-          <TouchableOpacity style={styles.backBtn}>
-            <Ionicons name="add" size={24} color={c.accent} />
+          <TouchableOpacity onPress={() => lockVault()} style={styles.backBtn}>
+            <Ionicons name="lock-closed-outline" size={24} color={c.accent} />
           </TouchableOpacity>
         </View>
 
         <ScrollView contentContainerStyle={styles.content}>
-          {vaultAssets.length === 0 ? (
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator color={c.accent} size="large" />
+              <Text style={[styles.loadingText, { color: c.textDim }]}>
+                Yükleniyor...
+              </Text>
+            </View>
+          ) : vaultAssets.length === 0 ? (
             <View style={styles.emptyContainer}>
               <Ionicons name="shield-checkmark-outline" size={80} color={c.surfaceAlt} />
               <Text style={[styles.emptyText, { color: c.textDim }]}>
                 Henüz gizli medya yok.
               </Text>
+              <Text style={[styles.emptySubText, { color: c.textDim }]}>
+                Medyaları Vault'a eklemek için galeri ekranından başlayın.
+              </Text>
             </View>
           ) : (
             <View style={styles.grid}>
-              {/* Render vault assets here */}
+              {vaultAssets.map((asset) => (
+                <VaultItemCard
+                  key={asset.id}
+                  asset={asset}
+                  colors={c}
+                  onDelete={() => handleDeleteAsset(asset)}
+                  onSelect={() => setSelectedAsset(asset)}
+                />
+              ))}
             </View>
           )}
         </ScrollView>
@@ -88,42 +108,56 @@ export default function VaultScreen() {
   );
 }
 
+interface VaultItemCardProps {
+  asset: VaultAsset;
+  colors: any;
+  onDelete: () => void;
+  onSelect: () => void;
+}
+
+function VaultItemCard({ asset, colors, onDelete, onSelect }: VaultItemCardProps) {
+  const getIconName = (mediaType: string) => {
+    switch (mediaType) {
+      case 'video':
+        return 'videocam-outline';
+      case 'audio':
+        return 'musical-notes-outline';
+      default:
+        return 'image-outline';
+    }
+  };
+
+  return (
+    <View style={[styles.itemContainer, { width: ITEM_SIZE }]}>
+      <PressableScale
+        onPress={onSelect}
+        scaleTo={0.95}
+        style={[
+          styles.item,
+          { height: ITEM_SIZE, backgroundColor: colors.surfaceAlt },
+        ]}
+      >
+        <View style={styles.itemIconContainer}>
+          <Ionicons name={getIconName(asset.mediaType) as any} size={40} color={colors.accent} />
+        </View>
+        <View style={styles.itemOverlay}>
+          <Text style={styles.itemFilename} numberOfLines={1}>
+            {asset.filename}
+          </Text>
+        </View>
+      </PressableScale>
+      <TouchableOpacity
+        onPress={onDelete}
+        style={[styles.deleteBtn, { backgroundColor: colors.error }]}
+      >
+        <Ionicons name="trash-outline" size={16} color="#fff" />
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   fill: { flex: 1 },
-  lockedContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 40,
-  },
-  lockIcon: {
-    width: 120,
-    height: 120,
-    borderRadius: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 24,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    marginBottom: 12,
-  },
-  desc: {
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  unlockBtn: {
-    paddingHorizontal: 32,
-    paddingVertical: 16,
-    borderRadius: 20,
-  },
-  unlockBtnText: {
-    fontSize: 16,
-    fontWeight: '800',
-  },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -145,6 +179,17 @@ const styles = StyleSheet.create({
     padding: 16,
     flexGrow: 1,
   },
+  loadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 100,
+  },
+  loadingText: {
+    fontSize: 15,
+    fontWeight: '600',
+    marginTop: 16,
+  },
   emptyContainer: {
     flex: 1,
     alignItems: 'center',
@@ -152,13 +197,55 @@ const styles = StyleSheet.create({
     paddingTop: 100,
   },
   emptyText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: '700',
     marginTop: 16,
+  },
+  emptySubText: {
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 8,
+    textAlign: 'center',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: 12,
+  },
+  itemContainer: {
+    marginBottom: 12,
+  },
+  item: {
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  itemIconContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 8,
+  },
+  itemFilename: {
+    color: '#fff',
+    fontSize: 12,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  deleteBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    alignSelf: 'center',
   },
 });
