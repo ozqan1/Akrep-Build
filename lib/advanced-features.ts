@@ -112,7 +112,7 @@ export async function convertDocumentToPDF(
     // Gerçek uygulamada: PDFKit veya react-native-pdf-lib kullanılacak
     const pdfPath = PDF_EXPORTS_DIR + `${scanResult.id}.pdf`;
 
-    console.log('PDF'ye dönüştürülüyor...');
+    console.log('PDF\'ye dönüştürülüyor...');
 
     // Simüle edilmiş PDF dönüştürme
     await new Promise(resolve => setTimeout(resolve, 800));
