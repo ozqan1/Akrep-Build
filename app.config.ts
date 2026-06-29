@@ -63,7 +63,7 @@ const config: ExpoConfig = {
       monochromeImage: "./assets/images/android-icon-monochrome.png",
     },
 
-    predictiveBackGestureEnabled: false,
+    // predictiveBackGestureEnabled: false, // Expo tarafından desteklenmiyor
     package: env.androidPackage,
     permissions: [
       "POST_NOTIFICATIONS",

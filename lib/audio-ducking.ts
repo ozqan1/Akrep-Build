@@ -42,10 +42,8 @@ export async function initializeAudioDucking(
     // iOS için AVAudioSession ayarla
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
       playsInSilentModeIOS: true,
       shouldDuckAndroid: currentConfig.enabled,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
       playThroughEarpieceAndroid: false,
     });
 
@@ -79,8 +77,6 @@ export async function duckAudio(sessionId: string = 'default'): Promise<void> {
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       shouldDuckAndroid: true,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DUCK_OTHERS,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DUCK_ON_FOCUS,
     });
 
     // Fade-out efekti (simüle edilmiş)
@@ -114,8 +110,6 @@ export async function restoreAudio(sessionId: string = 'default'): Promise<void>
     await Audio.setAudioModeAsync({
       playsInSilentModeIOS: true,
       shouldDuckAndroid: false,
-      interruptionModeIOS: Audio.INTERRUPTION_MODE_IOS_DO_NOT_MIX,
-      interruptionModeAndroid: Audio.INTERRUPTION_MODE_ANDROID_DO_NOT_MIX,
     });
 
     audioSession.isDucked = false;
